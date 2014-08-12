@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     radii = np.arange(5, 75, 5)
 
-    cycles = 10
+    cycles = 5
     opt_1_vals = []
     opt_1_err = []
     opt_2_vals = []
@@ -187,16 +187,20 @@ if __name__ == "__main__":
         time_3 = []
         for _ in range(cycles):
             t1 = time.time()
+            # make the binary mask from a list of roi coordinates and then apply
+            # it to the data stack
             option_1(data_list=data_list, bin_mask=bin_mask,
                      roi_list=roi_list, stat_func=stat_func,
                      make_bin_mask=True)
             t2 = time.time()
-            option_2(data_list=data_list, roi_list=roi_list,
-                     stat_func=stat_func)
-            t3 = time.time()
+            # use a pre-made binary mask to apply to a data stack
             option_1(data_list=data_list, bin_mask=bin_mask,
                      roi_list=roi_list, stat_func=stat_func,
                      make_bin_mask=False)
+            t3 = time.time()
+            # extract the roi with a list of coordinates
+            option_2(data_list=data_list, roi_list=roi_list,
+                     stat_func=stat_func)
             t4 = time.time()
             time_1.append(t2-t1)
             time_2.append(t3-t2)
@@ -213,9 +217,9 @@ if __name__ == "__main__":
     ax = pyplot.gca()
     ax.errorbar(roi_pixels, opt_1_vals, yerr=opt_1_err,
                 label="construct binary mask on the fly and apply to image stack")
-    ax.errorbar(roi_pixels, opt_3_vals, yerr=opt_3_err,
-                label="apply a pre-defined binary mask to image stack")
     ax.errorbar(roi_pixels, opt_2_vals, yerr=opt_2_err,
+                label="apply a pre-defined binary mask to image stack")
+    ax.errorbar(roi_pixels, opt_3_vals, yerr=opt_3_err,
                 label="extract roi from coords list")
     ax.legend(loc='upper right')
     ax.set_xlabel("Number of pixels in ROI")
