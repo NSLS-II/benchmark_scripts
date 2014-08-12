@@ -1,33 +1,37 @@
-################################################################################
-# Copyright (c) 2014, Brookhaven Science Associates, Brookhaven National       #
-# Laboratory. All rights reserved.                                             #
-#                                                                              #
-# Redistribution and use in source and binary forms, with or without           #
-# modification, are permitted provided that the following conditions are met:  #
-#                                                                              #
-# * Redistributions of source code must retain the above copyright notice,     #
-#   this list of conditions and the following disclaimer.                      #
-#                                                                              #
-# * Redistributions in binary form must reproduce the above copyright notice,  #
-#  this list of conditions and the following disclaimer in the documentation   #
-#  and/or other materials provided with the distribution.                      #
-#                                                                              #
-# * Neither the name of the European Synchrotron Radiation Facility nor the    #
-#   names of its contributors may be used to endorse or promote products       #
-#   derived from this software without specific prior written permission.      #
-#                                                                              #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"  #
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE    #
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE   #
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE    #
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR          #
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF         #
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS     #
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN      #
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)      #
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
-# POSSIBILITY OF SUCH DAMAGE.                                                  #
-################################################################################
+# ######################################################################
+# Copyright (c) 2014, Brookhaven Science Associates, Brookhaven        #
+# National Laboratory. All rights reserved.                            #
+#                                                                      #
+# Redistribution and use in source and binary forms, with or without   #
+# modification, are permitted provided that the following conditions   #
+# are met:                                                             #
+#                                                                      #
+# * Redistributions of source code must retain the above copyright     #
+#   notice, this list of conditions and the following disclaimer.      #
+#                                                                      #
+# * Redistributions in binary form must reproduce the above copyright  #
+#   notice this list of conditions and the following disclaimer in     #
+#   the documentation and/or other materials provided with the         #
+#   distribution.                                                      #
+#                                                                      #
+# * Neither the name of the Brookhaven Science Associates, Brookhaven  #
+#   National Laboratory nor the names of its contributors may be used  #
+#   to endorse or promote products derived from this software without  #
+#   specific prior written permission.                                 #
+#                                                                      #
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS  #
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT    #
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS    #
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE       #
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,           #
+# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES   #
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR   #
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)   #
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,  #
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OTHERWISE) ARISING   #
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
+# POSSIBILITY OF SUCH DAMAGE.                                          #
+########################################################################
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
@@ -35,6 +39,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import numpy as np
 import logging
+
 logger = logging.getLogger(__name__)
 import time
 import matplotlib as mpl
@@ -56,13 +61,16 @@ Option 2:
 2. Iterate over data sets and extract the relevant values at each coordinate
 3. Sum coordinate values
 """
+
+
 def get_bin_mask(dsize, roi_list):
     bin_mask = np.zeros(dsize)
-    for (x,y) in roi_list:
+    for (x, y) in roi_list:
         bin_mask[x][y] = 1
     return bin_mask
 
-def option_1(data_list, roi_list, bin_mask, stat_func, make_bin_mask = True):
+
+def option_1(data_list, roi_list, bin_mask, stat_func, make_bin_mask=True):
     """
     Option 1:
     1. Create binary mask where the roi is True and everything else is False
@@ -78,7 +86,7 @@ def option_1(data_list, roi_list, bin_mask, stat_func, make_bin_mask = True):
     stat_func :
         sum, avg, stddev, etc...
     """
-    if(make_bin_mask):
+    if (make_bin_mask):
         bin_mask = get_bin_mask(data_list[0].shape, roi_list)
     roi = []
     for data in data_list:
@@ -110,7 +118,7 @@ def option_2(data_list, roi_list, stat_func):
     roi = []
     for data_list in data_list:
         cur_val = 0
-        for(x,y) in roi_list:
+        for (x, y) in roi_list:
             cur_val += data_list[x][y]
         roi.append(cur_val)
 
@@ -144,14 +152,15 @@ def get_2d_circle_coords(cx, cy, radius, nx, ny):
 
     coords_list = []
     for y in np.arange(min_y, max_y, 1):
-        y_rel = y-cy
+        y_rel = y - cy
         for x in np.arange(min_x, max_x, 1):
-            x_rel = x-cx
-            len = np.sqrt(y_rel*y_rel + x_rel*x_rel)
+            x_rel = x - cx
+            len = np.sqrt(y_rel * y_rel + x_rel * x_rel)
             if len < radius:
                 coords_list.append((x, y))
 
     return coords_list
+
 
 if __name__ == "__main__":
 
@@ -167,7 +176,7 @@ if __name__ == "__main__":
     print("Approx area of circle: {0}".format(len(roi_list)))
     print("Computed area of circle: {0}".format(np.pi * radius * radius))
 
-    radii = np.arange(5, 75, 5)
+    radii = np.arange(75, 5, -5)
 
     cycles = 5
     opt_1_vals = []
@@ -202,9 +211,9 @@ if __name__ == "__main__":
             option_2(data_list=data_list, roi_list=roi_list,
                      stat_func=stat_func)
             t4 = time.time()
-            time_1.append(t2-t1)
-            time_2.append(t3-t2)
-            time_3.append(t4-t3)
+            time_1.append(t2 - t1)
+            time_2.append(t3 - t2)
+            time_3.append(t4 - t3)
 
         roi_pixels.append(len(roi_list))
         opt_1_vals.append(np.average(time_1))
@@ -216,7 +225,8 @@ if __name__ == "__main__":
 
     ax = pyplot.gca()
     ax.errorbar(roi_pixels, opt_1_vals, yerr=opt_1_err,
-                label="construct binary mask on the fly and apply to image stack")
+                label="construct binary mask on the fly and apply to image "
+                      "stack")
     ax.errorbar(roi_pixels, opt_2_vals, yerr=opt_2_err,
                 label="apply a pre-defined binary mask to image stack")
     ax.errorbar(roi_pixels, opt_3_vals, yerr=opt_3_err,
