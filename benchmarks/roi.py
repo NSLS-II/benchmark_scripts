@@ -42,8 +42,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 import time
-import matplotlib as mpl
-from matplotlib import pyplot
+
+from matplotlib import pyplot as plt
+from collections import deque, defaultdict
 
 """
 roi.py is a benchmark to evaluate the speed difference between:
@@ -64,9 +65,9 @@ Option 2:
 
 
 def get_bin_mask(dsize, roi_list):
-    bin_mask = np.zeros(dsize)
+    bin_mask = np.zeros(dsize, dtype=bool)
     for (x, y) in roi_list:
-        bin_mask[x][y] = 1
+        bin_mask[x, y] = 1
     return bin_mask
 
 
@@ -94,6 +95,31 @@ def option_1(data_list, roi_list, bin_mask, stat_func, make_bin_mask=True):
         roi.append(stat_func(masked))
 
     return roi
+
+
+def option_1a(data_list, roi_list, bin_mask, stat_func, make_bin_mask=True):
+    """
+    Option 1:
+    1. Create binary mask where the roi is True and everything else is False
+    2. In-place multiply binary mask with data set.
+    3. Sum masked array
+
+    Parameters
+    ----------
+    data : list
+        ndarray list
+    roi : list
+        coordinate list. len(roi[0]) == data[0].ndims
+    stat_func :
+        sum, avg, stddev, etc...
+    """
+    if(make_bin_mask):
+        bin_mask = get_bin_mask(data_list[0].shape, roi_list)
+    roi = deque()
+    for data in data_list:
+        roi.append(stat_func(data[bin_mask]))
+
+    return np.array(roi)
 
 
 def option_2(data_list, roi_list, stat_func):
@@ -125,12 +151,20 @@ def option_2(data_list, roi_list, stat_func):
     return roi
 
 
-def datagen_2d(nx, ny, nz):
-    data = []
-    for _ in range(nz):
-        data.append(np.ones((nx, ny)))
+def option_3(data_list, roi_list, stat_func):
+    data = np.asarray(data_list)
+    bin_mask = get_bin_mask(data.shape[1:], roi_list)
+    return stat_func(data * bin_mask, axis=tuple(range(1, data.ndim)))
 
-    return data
+
+def option_4(data_list, roi_list, stat_func):
+    data = np.asarray(data_list)
+    bin_mask = get_bin_mask(data.shape[1:], roi_list)
+    return stat_func(data[:, bin_mask], axis=1)
+
+
+def datagen_2d(nx, ny, nz):
+    return [np.ones((nx, ny)) for j in range(nz)]
 
 
 def get_2d_circle_coords(cx, cy, radius, nx, ny):
@@ -148,7 +182,7 @@ def get_2d_circle_coords(cx, cy, radius, nx, ny):
     if min_y < 0:
         min_y = 0
     if max_y > ny:
-        max_y > ny
+        max_y = ny
 
     coords_list = []
     for y in np.arange(min_y, max_y, 1):
@@ -179,60 +213,88 @@ if __name__ == "__main__":
     radii = np.arange(75, 5, -5)
 
     cycles = 5
-    opt_1_vals = []
-    opt_1_err = []
-    opt_2_vals = []
-    opt_2_err = []
-    opt_3_vals = []
-    opt_3_err = []
-    num_pixels = []
+    test_functions = [
+         {'color': 'r',
+          'func': option_1,
+          'kwargs': {'make_bin_mask': True},
+          'label': 'op1_make',
+          'ls': '--'},
+         {'color': 'r',
+          'func': option_1,
+          'kwargs': {'make_bin_mask': False},
+          'label': 'op1_pre',
+          'ls': '-'},
+         {'color': 'b',
+          'func': option_1a,
+          'kwargs': {'make_bin_mask': True},
+          'label': 'op1a_make',
+          'ls': '--'},
+         {'color': 'b',
+          'func': option_1a,
+          'kwargs': {'make_bin_mask': False},
+          'label': 'op1a_pre',
+          'ls': '-'},
+         {'color': 'k',
+          'func': option_3,
+          'kwargs': {},
+          'label': 'op3',
+          'ls': '-'},
+         {'color': 'g',
+          'func': option_4,
+          'kwargs': {},
+          'label': 'op4',
+          'ls': '-'}]
+
+    vals = defaultdict(list)
+    errs = defaultdict(list)
+
     roi_pixels = []
+
     for radius in radii:
         roi_list = get_2d_circle_coords(cx, cy, radius, nx, ny)
-        # create the binary mask
-        bin_mask = get_bin_mask(data_list[0].shape, roi_list)
-        time_1 = []
-        time_2 = []
-        time_3 = []
-        for _ in range(cycles):
-            t1 = time.time()
-            # make the binary mask from a list of roi coordinates and then apply
-            # it to the data stack
-            option_1(data_list=data_list, bin_mask=bin_mask,
-                     roi_list=roi_list, stat_func=stat_func,
-                     make_bin_mask=True)
-            t2 = time.time()
-            # use a pre-made binary mask to apply to a data stack
-            option_1(data_list=data_list, bin_mask=bin_mask,
-                     roi_list=roi_list, stat_func=stat_func,
-                     make_bin_mask=False)
-            t3 = time.time()
-            # extract the roi with a list of coordinates
-            option_2(data_list=data_list, roi_list=roi_list,
-                     stat_func=stat_func)
-            t4 = time.time()
-            time_1.append(t2 - t1)
-            time_2.append(t3 - t2)
-            time_3.append(t4 - t3)
-
         roi_pixels.append(len(roi_list))
-        opt_1_vals.append(np.average(time_1))
-        opt_1_err.append(np.std(time_1))
-        opt_2_vals.append(np.average(time_2))
-        opt_2_err.append(np.std(time_2))
-        opt_3_vals.append(np.average(time_3))
-        opt_3_err.append(np.std(time_3))
+        bin_mask = get_bin_mask(data_list[0].shape, roi_list)
+        for data, label_post_fix in zip((data_list, np.asarray(data_list)),
+                                    ('_list', '_array')):
+            for test_dict in test_functions:
+                # un-pack the useful stuff
+                label = test_dict['label'] + label_post_fix
+                t_kw = test_dict['kwargs']
+                tf = test_dict['func']
+                time_deque = deque()
+                # special case option 1
+                if 'make_bin_mask' in t_kw:
+                    t_kw['bin_mask'] = bin_mask
+                # loop over number of cycles
+                for _ in range(cycles):
+                    # get the time
+                    t1 = time.time()
+                    # run the function
+                    res = tf(data_list=data,
+                         roi_list=roi_list, stat_func=stat_func,
+                         **t_kw)
+                    # get the time after
+                    t2 = time.time()
+                    # record the delta
+                    time_deque.append(t2 - t1)
+                # compute the statistics
+                vals[label].append(np.mean(time_deque))
+                errs[label].append(np.std(time_deque))
 
-    ax = pyplot.gca()
-    ax.errorbar(roi_pixels, opt_1_vals, yerr=opt_1_err,
-                label="construct binary mask on the fly and apply to image "
-                      "stack")
-    ax.errorbar(roi_pixels, opt_2_vals, yerr=opt_2_err,
-                label="apply a pre-defined binary mask to image stack")
-    ax.errorbar(roi_pixels, opt_3_vals, yerr=opt_3_err,
-                label="extract roi from coords list")
+    # do plotting
+    fig, ax = plt.subplots(1, 1)
+    for test_dict in test_functions:
+        c = test_dict['color']
+        ls = test_dict['ls']
+
+        for lw, post_fix in zip((1, 4), ('_list', '_array')):
+            label = test_dict['label'] + post_fix
+            ax.errorbar(roi_pixels, vals[label],
+                        yerr=errs[label],
+                        label=label, color=c, linestyle=ls, lw=lw)
+
     ax.legend(loc='upper right')
     ax.set_xlabel("Number of pixels in ROI")
     ax.set_ylabel("Average time for {0} cycles (s)".format(cycles))
 
-    pyplot.show()
+    plt.show()
