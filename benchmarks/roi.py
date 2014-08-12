@@ -67,7 +67,7 @@ Option 2:
 def get_bin_mask(dsize, roi_list):
     bin_mask = np.zeros(dsize, dtype=bool)
     for (x, y) in roi_list:
-        bin_mask[x, y] = 1
+        bin_mask[x, y] = True
     return bin_mask
 
 
